@@ -135,7 +135,7 @@
             );
         }
 
-        // 4. MODAL: REGISTRO DE LEAD (Con Datalist para texto libre)
+        // 4. MODAL: REGISTRO DE LEAD
         function ModalRegistroLead({ cerrar }) {
             const guardarLead = async (e) => {
                 e.preventDefault();
@@ -214,7 +214,7 @@
             );
         }
 
-        // 5. VISTA: DETALLE DEL LEAD (Con botón para editar información básica)
+        // 5. VISTA: DETALLE DEL LEAD 
         function VistaDetalleLead({ leadId, volver }) {
             const [lead, setLead] = useState(null);
             const [editandoInfo, setEditandoInfo] = useState(false);
@@ -225,7 +225,7 @@
                     if(doc.exists) {
                         const data = { id: doc.id, ...doc.data() };
                         setLead(data);
-                        setInfoForm(data); // Prepara los datos para el formulario de edición
+                        setInfoForm(data);
                     }
                 });
                 return () => unsubscribe();
@@ -283,10 +283,10 @@
                             ) : (
                                 <>
                                     <div>
-                                        <div class="flex items-center gap-3">
+                                        <div class="flex items-center gap-3 mb-2">
                                             <h2 class="text-3xl font-bold text-gray-800">{lead.nombre}</h2>
-                                            <button onClick={() => setEditandoInfo(true)} class="text-gray-400 hover:text-blue-600 transition-colors" title="Editar datos del cliente">
-                                                <i class="fas fa-pencil-alt text-sm"></i>
+                                            <button onClick={() => setEditandoInfo(true)} class="text-xs bg-gray-200 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-300 transition-colors font-bold flex items-center gap-2" title="Editar datos del cliente">
+                                                <i class="fas fa-pencil-alt"></i> Editar
                                             </button>
                                         </div>
                                         <p class="text-gray-500"><i class="fab fa-whatsapp mr-1 text-green-500"></i> {lead.telefono} | Llegó por: {lead.canal}</p>
