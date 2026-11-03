@@ -135,7 +135,7 @@
             );
         }
 
-        // 4. MODAL: REGISTRO DE LEAD (Con Datalist para permitir texto libre)
+        // 4. MODAL: REGISTRO DE LEAD (Con Datalist para texto libre)
         function ModalRegistroLead({ cerrar }) {
             const guardarLead = async (e) => {
                 e.preventDefault();
@@ -214,16 +214,34 @@
             );
         }
 
-        // 5. VISTA: DETALLE DEL LEAD 
+        // 5. VISTA: DETALLE DEL LEAD (Con botón para editar información básica)
         function VistaDetalleLead({ leadId, volver }) {
             const [lead, setLead] = useState(null);
+            const [editandoInfo, setEditandoInfo] = useState(false);
+            const [infoForm, setInfoForm] = useState({});
             
             useEffect(() => {
                 const unsubscribe = db.collection("leads").doc(leadId).onSnapshot(doc => {
-                    if(doc.exists) setLead({ id: doc.id, ...doc.data() });
+                    if(doc.exists) {
+                        const data = { id: doc.id, ...doc.data() };
+                        setLead(data);
+                        setInfoForm(data); // Prepara los datos para el formulario de edición
+                    }
                 });
                 return () => unsubscribe();
             }, [leadId]);
+
+            const guardarInfo = async (e) => {
+                e.preventDefault();
+                await db.collection("leads").doc(leadId).update({
+                    nombre: infoForm.nombre,
+                    telefono: infoForm.telefono,
+                    canal: infoForm.canal,
+                    servicio: infoForm.servicio,
+                    prenda: infoForm.prenda
+                });
+                setEditandoInfo(false);
+            };
 
             if (!lead) return <div class="p-8 text-center">Cargando...</div>;
 
@@ -233,14 +251,52 @@
                     
                     <div class="bg-white p-6 rounded-lg shadow">
                         <div class="flex justify-between items-start">
-                            <div>
-                                <h2 class="text-3xl font-bold text-gray-800">{lead.nombre}</h2>
-                                <p class="text-gray-500"><i class="fab fa-whatsapp mr-1 text-green-500"></i> {lead.telefono} | Llegó por: {lead.canal}</p>
-                                <p class="mt-2 text-sm text-gray-700 bg-gray-100 p-2 rounded inline-block">Interés: {lead.servicio} - {lead.prenda}</p>
-                            </div>
-                            <span class="px-4 py-2 rounded font-bold text-sm bg-yellow-100 text-yellow-800 uppercase tracking-wide">
-                                Etapa: {lead.etapa}
-                            </span>
+                            {editandoInfo ? (
+                                <form onSubmit={guardarInfo} class="w-full space-y-3 bg-gray-50 p-4 rounded border">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-600 mb-1">Nombre</label>
+                                            <input type="text" value={infoForm.nombre} onChange={e => setInfoForm({...infoForm, nombre: e.target.value})} required class="w-full border rounded p-2 text-sm bg-white"/>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-600 mb-1">Teléfono</label>
+                                            <input type="text" value={infoForm.telefono} onChange={e => setInfoForm({...infoForm, telefono: e.target.value})} required class="w-full border rounded p-2 text-sm bg-white"/>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-600 mb-1">Canal</label>
+                                            <input type="text" value={infoForm.canal} onChange={e => setInfoForm({...infoForm, canal: e.target.value})} class="w-full border rounded p-2 text-sm bg-white"/>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-600 mb-1">Servicio</label>
+                                            <input type="text" value={infoForm.servicio} onChange={e => setInfoForm({...infoForm, servicio: e.target.value})} class="w-full border rounded p-2 text-sm bg-white"/>
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <label class="block text-xs font-bold text-gray-600 mb-1">Prenda / Detalle</label>
+                                            <input type="text" value={infoForm.prenda} onChange={e => setInfoForm({...infoForm, prenda: e.target.value})} class="w-full border rounded p-2 text-sm bg-white"/>
+                                        </div>
+                                    </div>
+                                    <div class="flex space-x-2 mt-2">
+                                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700">Guardar Cambios</button>
+                                        <button type="button" onClick={() => {setEditandoInfo(false); setInfoForm(lead);}} class="bg-gray-300 text-gray-800 px-4 py-2 rounded text-sm font-bold hover:bg-gray-400">Cancelar</button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <>
+                                    <div>
+                                        <div class="flex items-center gap-3">
+                                            <h2 class="text-3xl font-bold text-gray-800">{lead.nombre}</h2>
+                                            <button onClick={() => setEditandoInfo(true)} class="text-gray-400 hover:text-blue-600 transition-colors" title="Editar datos del cliente">
+                                                <i class="fas fa-pencil-alt text-sm"></i>
+                                            </button>
+                                        </div>
+                                        <p class="text-gray-500"><i class="fab fa-whatsapp mr-1 text-green-500"></i> {lead.telefono} | Llegó por: {lead.canal}</p>
+                                        <p class="mt-2 text-sm text-gray-700 bg-gray-100 p-2 rounded inline-block">Interés: {lead.servicio} - {lead.prenda}</p>
+                                    </div>
+                                    <span class="px-4 py-2 rounded font-bold text-sm bg-yellow-100 text-yellow-800 uppercase tracking-wide">
+                                        Etapa: {lead.etapa}
+                                    </span>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -431,7 +487,7 @@
                             <div key={seg.id} class="border-l-2 border-gray-200 pl-3 py-1 group relative">
                                 {editandoId === seg.id ? (
                                     <div class="flex gap-2 mb-2">
-                                        <select value={respondioEdit} onChange={e=>setRespondioEdit(e.target.value)} class="border rounded p-1 text-xs">
+                                        <select value={respondioEdit} onChange={e=>setRespondioEdit(e.target.value)} class="border rounded p-1 text-xs bg-white">
                                             <option>Pendiente</option>
                                             <option>Sí respondió</option>
                                             <option>No respondió</option>
