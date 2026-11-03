@@ -57,12 +57,12 @@
                             <div class="flex space-x-4">
                                 <button 
                                     onClick={() => setVistaActual('leads')} 
-                                    class={`px-3 py-1 rounded ${vistaActual === 'leads' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>
+                                    class={`px-3 py-1 rounded font-bold transition-colors ${vistaActual === 'leads' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
                                     Leads
                                 </button>
                                 <button 
                                     onClick={() => setVistaActual('reportes')} 
-                                    class={`px-3 py-1 rounded ${vistaActual === 'reportes' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>
+                                    class={`px-3 py-1 rounded font-bold transition-colors ${vistaActual === 'reportes' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
                                     Tablero
                                 </button>
                             </div>
@@ -70,7 +70,7 @@
                     </nav>
 
                     {/* Contenedor Principal */}
-                    <main class="flex-1 w-full max-w-6xl mx-auto p-4">
+                    <main class="flex-1 w-full max-w-6xl mx-auto p-4 mt-2">
                         {vistaActual === 'leads' && <VistaLeads alSeleccionarLead={(lead) => { setLeadSeleccionado(lead); setVistaActual('detalle'); }} />}
                         {vistaActual === 'detalle' && leadSeleccionado && <VistaDetalleLead leadId={leadSeleccionado.id} volver={() => setVistaActual('leads')} />}
                         {vistaActual === 'reportes' && <VistaReportes />}
@@ -79,10 +79,14 @@
             );
         }
 
-        // 3. VISTA: LISTA DE LEADS
+        // 3. VISTA: LISTA DE LEADS (Ahora con buscador y filtros)
         function VistaLeads({ alSeleccionarLead }) {
             const [leads, setLeads] = useState([]);
             const [mostrarModal, setMostrarModal] = useState(false);
+            
+            // Estados para búsqueda y filtrado
+            const [busqueda, setBusqueda] = useState('');
+            const [filtroEtapa, setFiltroEtapa] = useState('Todas');
 
             useEffect(() => {
                 const unsubscribe = db.collection("leads").orderBy("fechaCreacion", "desc").onSnapshot(snapshot => {
@@ -91,44 +95,89 @@
                 return () => unsubscribe();
             }, []);
 
+            // Lógica de filtrado en tiempo real
+            const leadsFiltrados = leads.filter(lead => {
+                const coincideTexto = (lead.nombre || '').toLowerCase().includes(busqueda.toLowerCase()) || 
+                                      (lead.telefono || '').includes(busqueda);
+                const coincideEtapa = filtroEtapa === 'Todas' || lead.etapa === filtroEtapa;
+                return coincideTexto && coincideEtapa;
+            });
+
             return (
                 <div>
-                    <div class="flex justify-between items-center mb-6">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                         <h2 class="text-2xl font-bold text-gray-700">Oportunidades</h2>
-                        <button onClick={() => setMostrarModal(true)} class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 font-bold">
+                        <button onClick={() => setMostrarModal(true)} class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 font-bold transition-colors w-full md:w-auto">
                             + Registrar Lead
                         </button>
+                    </div>
+
+                    {/* Barra de Búsqueda y Filtros */}
+                    <div class="bg-white p-4 rounded-lg shadow mb-4 flex flex-col md:flex-row gap-4">
+                        <div class="flex-1 relative">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                            <input 
+                                type="text" 
+                                placeholder="Buscar por nombre o teléfono..." 
+                                value={busqueda} 
+                                onChange={e => setBusqueda(e.target.value)} 
+                                class="w-full pl-10 pr-4 py-2 border rounded outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        <div class="md:w-64">
+                            <select 
+                                value={filtroEtapa} 
+                                onChange={e => setFiltroEtapa(e.target.value)} 
+                                class="w-full p-2 border rounded bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="Todas">Todas las etapas</option>
+                                <option value="Lead Nuevo">Lead Nuevo</option>
+                                <option value="Cotización Rápida">Cotización Rápida</option>
+                                <option value="Cotización Formal">Cotización Formal</option>
+                                <option value="Pedido Confirmado">Pedido Confirmado</option>
+                                <option value="Entregado/Liquidado">Entregado/Liquidado</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="bg-white rounded-lg shadow overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="bg-gray-100 text-gray-600 text-sm uppercase">
-                                    <th class="p-4 border-b">Fecha</th>
-                                    <th class="p-4 border-b">Cliente</th>
-                                    <th class="p-4 border-b">Canal</th>
-                                    <th class="p-4 border-b">Servicio</th>
-                                    <th class="p-4 border-b">Estado</th>
+                                <tr class="bg-gray-100 text-gray-600 text-sm uppercase border-b-2 border-gray-200">
+                                    <th class="p-4">Fecha</th>
+                                    <th class="p-4">Cliente</th>
+                                    <th class="p-4">Canal</th>
+                                    <th class="p-4">Servicio</th>
+                                    <th class="p-4">Estado</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {leads.map(lead => (
-                                    <tr key={lead.id} onClick={() => alSeleccionarLead(lead)} class="hover:bg-gray-50 cursor-pointer border-b last:border-0 transition">
-                                        <td class="p-4">{lead.fechaCreacion ? new Date(lead.fechaCreacion.toDate()).toLocaleDateString() : ''}</td>
-                                        <td class="p-4 font-semibold">{lead.nombre} <br/><span class="text-xs text-gray-400 font-normal">{lead.telefono}</span></td>
-                                        <td class="p-4 text-sm">{lead.canal}</td>
-                                        <td class="p-4 text-sm">{lead.servicio}</td>
+                                {leadsFiltrados.map(lead => (
+                                    <tr key={lead.id} onClick={() => alSeleccionarLead(lead)} class="hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors">
+                                        <td class="p-4 whitespace-nowrap text-sm text-gray-600">{lead.fechaCreacion ? new Date(lead.fechaCreacion.toDate()).toLocaleDateString() : ''}</td>
                                         <td class="p-4">
-                                            <span class={`px-2 py-1 text-xs font-bold rounded-full 
+                                            <div class="font-bold text-gray-800">{lead.nombre}</div>
+                                            <div class="text-xs text-gray-500"><i class="fab fa-whatsapp text-green-500 mr-1"></i>{lead.telefono}</div>
+                                        </td>
+                                        <td class="p-4 text-sm text-gray-600">{lead.canal}</td>
+                                        <td class="p-4 text-sm text-gray-600">{lead.servicio}</td>
+                                        <td class="p-4">
+                                            <span class={`px-2 py-1 text-[11px] font-bold uppercase rounded-full whitespace-nowrap
                                                 ${lead.etapa === 'Pedido Confirmado' ? 'bg-green-100 text-green-800' : 
-                                                  lead.etapa === 'Entregado/Liquidado' ? 'bg-gray-200 text-gray-800' : 
+                                                  lead.etapa === 'Entregado/Liquidado' ? 'bg-gray-200 text-gray-700' : 
                                                   'bg-blue-100 text-blue-800'}`}>
                                                 {lead.etapa || 'Nuevo'}
                                             </span>
                                         </td>
                                     </tr>
                                 ))}
-                                {leads.length === 0 && <tr><td colSpan="5" class="p-8 text-center text-gray-400">No hay leads registrados.</td></tr>}
+                                {leadsFiltrados.length === 0 && (
+                                    <tr>
+                                        <td colSpan="5" class="p-8 text-center text-gray-400">
+                                            {leads.length === 0 ? 'No hay leads registrados en la base de datos.' : 'No se encontraron resultados para tu búsqueda.'}
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -163,7 +212,7 @@
                     <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
                         <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-lg">
                             <h3 class="font-bold text-lg">Nuevo Lead</h3>
-                            <button onClick={cerrar} class="text-gray-500 hover:text-red-500"><i class="fas fa-times"></i></button>
+                            <button onClick={cerrar} class="text-gray-500 hover:text-red-500 transition-colors"><i class="fas fa-times"></i></button>
                         </div>
                         <form onSubmit={guardarLead} class="p-4 space-y-4">
                             <div>
@@ -177,19 +226,18 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-600 mb-1">Canal de Llegada</label>
-                                    <input list="canales-list" name="canal" required class="w-full border rounded p-2 bg-white outline-none" placeholder="Ej. WhatsApp Directo"/>
+                                    <input list="canales-list" name="canal" required class="w-full border rounded p-2 bg-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej. WhatsApp Directo"/>
                                     <datalist id="canales-list">
                                         <option value="WhatsApp Directo"></option>
                                         <option value="Anuncio Facebook"></option>
                                         <option value="Instagram Direct"></option>
                                         <option value="Visita Tienda"></option>
                                         <option value="Mercado Libre"></option>
-                                        <option value="Llamada Telefónica"></option>
                                     </datalist>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-600 mb-1">Servicio Solicitado</label>
-                                    <input list="servicios-list" name="servicio" required class="w-full border rounded p-2 bg-white outline-none" placeholder="Ej. Impresión DTF"/>
+                                    <input list="servicios-list" name="servicio" required class="w-full border rounded p-2 bg-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej. Impresión DTF"/>
                                     <datalist id="servicios-list">
                                         <option value="Impresión DTF"></option>
                                         <option value="Impresión DTG"></option>
@@ -200,16 +248,15 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-600 mb-1">Prenda / Detalle</label>
-                                <input list="prendas-list" name="prenda" required class="w-full border rounded p-2 bg-white outline-none" placeholder="Escribe o selecciona..."/>
+                                <input list="prendas-list" name="prenda" required class="w-full border rounded p-2 bg-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="Escribe o selecciona..."/>
                                 <datalist id="prendas-list">
-                                    <option value="Playera Oversize (Shaka Wear / Wusstek)"></option>
+                                    <option value="Playera Oversize (Shaka / Wusstek)"></option>
                                     <option value="Gorra Snapback/Trucker (Yupoong)"></option>
-                                    <option value="Rope Hat 5-Panel"></option>
                                     <option value="Hoodie / Sudadera"></option>
                                     <option value="Solo Impresión (Trae Prenda)"></option>
                                 </datalist>
                             </div>
-                            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 transition">
+                            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 transition-colors">
                                 Guardar Lead Rápido
                             </button>
                         </form>
@@ -249,20 +296,19 @@
 
             const eliminarLead = async () => {
                 const confirmacion = window.confirm("⚠️ ADVERTENCIA: ¿Estás seguro de que deseas eliminar este lead y toda su información?\n\nEsta acción no se puede deshacer.");
-                
                 if (confirmacion) {
                     await db.collection("leads").doc(leadId).delete();
                     volver(); 
                 }
             };
 
-            if (!lead) return <div class="p-8 text-center">Cargando...</div>;
+            if (!lead) return <div class="p-8 text-center text-gray-500"><i class="fas fa-spinner fa-spin text-2xl mb-2"></i><br/>Cargando...</div>;
 
             return (
                 <div class="space-y-6">
-                    <button onClick={volver} class="text-blue-600 hover:underline"><i class="fas fa-arrow-left mr-2"></i>Volver al listado</button>
+                    <button onClick={volver} class="text-blue-600 hover:text-blue-800 font-bold transition-colors"><i class="fas fa-arrow-left mr-2"></i>Volver al listado</button>
                     
-                    <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                         <div class="flex justify-between items-start">
                             {editandoInfo ? (
                                 <form onSubmit={guardarInfo} class="w-full space-y-3 bg-gray-50 p-4 rounded border">
@@ -294,35 +340,35 @@
                                     </div>
                                 </form>
                             ) : (
-                                <>
+                                <div class="w-full flex flex-col md:flex-row justify-between items-start">
                                     <div>
-                                        <div class="flex items-center gap-3 mb-2">
-                                            <h2 class="text-3xl font-bold text-gray-800">{lead.nombre}</h2>
-                                            <button onClick={() => setEditandoInfo(true)} class="text-xs bg-gray-200 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-300 transition-colors font-bold flex items-center gap-2" title="Editar datos del cliente">
+                                        <div class="flex items-center gap-3 mb-2 flex-wrap">
+                                            <h2 class="text-3xl font-black text-gray-800 tracking-tight">{lead.nombre}</h2>
+                                            <button onClick={() => setEditandoInfo(true)} class="text-xs bg-gray-100 text-gray-600 border border-gray-200 px-3 py-1.5 rounded shadow-sm hover:bg-white transition-colors font-bold flex items-center gap-2">
                                                 <i class="fas fa-pencil-alt"></i> Editar
                                             </button>
-                                            <button onClick={eliminarLead} class="text-xs bg-red-100 text-red-600 px-3 py-1.5 rounded hover:bg-red-200 transition-colors font-bold flex items-center gap-2" title="Eliminar lead permanentemente">
+                                            <button onClick={eliminarLead} class="text-xs bg-red-50 text-red-600 border border-red-100 px-3 py-1.5 rounded shadow-sm hover:bg-red-100 transition-colors font-bold flex items-center gap-2">
                                                 <i class="fas fa-trash-alt"></i> Eliminar
                                             </button>
                                         </div>
-                                        <p class="text-gray-500"><i class="fab fa-whatsapp mr-1 text-green-500"></i> {lead.telefono} | Llegó por: {lead.canal}</p>
-                                        <p class="mt-2 text-sm text-gray-700 bg-gray-100 p-2 rounded inline-block">Interés: {lead.servicio} - {lead.prenda}</p>
+                                        <p class="text-gray-500 font-medium"><i class="fab fa-whatsapp mr-1 text-green-500 text-lg"></i> {lead.telefono} <span class="text-gray-300 mx-2">|</span> Llegó por: {lead.canal}</p>
+                                        <p class="mt-3 text-sm text-gray-700 bg-gray-100 px-3 py-2 rounded-md inline-block border border-gray-200">
+                                            <span class="font-bold text-gray-500">Interés:</span> {lead.servicio} - {lead.prenda}
+                                        </p>
                                     </div>
-                                    <span class={`px-4 py-2 rounded font-bold text-sm uppercase tracking-wide
-                                        ${lead.etapa === 'Pedido Confirmado' ? 'bg-green-100 text-green-800' : 
-                                          lead.etapa === 'Entregado/Liquidado' ? 'bg-gray-200 text-gray-800' : 
-                                          'bg-yellow-100 text-yellow-800'}`}>
-                                        Etapa: {lead.etapa}
-                                    </span>
-                                </>
+                                    <div class="mt-4 md:mt-0 bg-yellow-50 border-2 border-yellow-200 px-4 py-2 rounded-lg text-center">
+                                        <p class="text-[10px] text-yellow-600 font-black uppercase mb-1">Estado Actual</p>
+                                        <span class="font-bold text-sm text-yellow-800 uppercase tracking-wide">
+                                            {lead.etapa}
+                                        </span>
+                                    </div>
+                                </div>
                             )}
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                         <SeccionSeguimientos leadId={leadId} />
-                        
-                        {/* Agrupamos Cotización y Pagos en la columna derecha */}
                         <div class="space-y-6">
                             <SeccionCotizacion lead={lead} />
                             <SeccionPagos lead={lead} leadId={leadId} />
@@ -342,7 +388,6 @@
                 e.preventDefault();
                 const esNueva = !lead.cotizacionActiva;
                 const nuevoMonto = parseFloat(montoInput);
-                
                 let dataActualizada = {};
 
                 if (esNueva) {
@@ -356,7 +401,7 @@
                             estado: 'activa'
                         },
                         etapa: lead.etapa === 'Pedido Confirmado' || lead.etapa === 'Entregado/Liquidado' 
-                               ? lead.etapa // No retroceder etapa si ya hay pagos
+                               ? lead.etapa 
                                : (tipoInput === 'Formal' ? 'Cotización Formal' : 'Cotización Rápida')
                     };
                 } else {
@@ -394,55 +439,56 @@
             const cot = lead.cotizacionActiva;
 
             return (
-                <div class="bg-white rounded-lg shadow p-6 border-t-4 border-blue-500">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-t-4 border-t-blue-500 p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-bold text-gray-700">Cotización y Pedido</h3>
+                        <h3 class="text-xl font-bold text-gray-800">Cotización y Pedido</h3>
                         {!cot || cot.estado === 'anulada_por_error' ? (
-                            <button onClick={() => {setTipoInput('Rápida'); setMontoInput(''); setEditando(true);}} class="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200">
+                            <button onClick={() => {setTipoInput('Rápida'); setMontoInput(''); setEditando(true);}} class="text-sm bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded font-bold hover:bg-blue-100 transition-colors">
                                 + Crear Cotización
                             </button>
                         ) : null}
                     </div>
 
                     {editando ? (
-                        <form onSubmit={guardarCotizacion} class="space-y-4 bg-gray-50 p-4 rounded border">
+                        <form onSubmit={guardarCotizacion} class="space-y-4 bg-gray-50 p-4 rounded border border-gray-200 shadow-inner">
                             <div>
-                                <label class="block text-xs font-bold text-gray-600">Tipo</label>
-                                <select value={tipoInput} onChange={e=>setTipoInput(e.target.value)} class="w-full p-2 border rounded bg-white">
-                                    <option value="Rápida">Cotización Rápida</option>
-                                    <option value="Formal">Cotización Formal</option>
+                                <label class="block text-xs font-bold text-gray-600 mb-1">Tipo de Cotización</label>
+                                <select value={tipoInput} onChange={e=>setTipoInput(e.target.value)} class="w-full p-2 border border-gray-300 rounded bg-white outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="Rápida">Cotización Rápida (Aprox)</option>
+                                    <option value="Formal">Cotización Formal (Final)</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-600">Monto Total Estimado ($)</label>
-                                <input type="number" step="0.01" value={montoInput} onChange={e=>setMontoInput(e.target.value)} required class="w-full p-2 border rounded" />
+                                <label class="block text-xs font-bold text-gray-600 mb-1">Monto Total Estimado ($)</label>
+                                <input type="number" step="0.01" value={montoInput} onChange={e=>setMontoInput(e.target.value)} required class="w-full p-2 border border-gray-300 rounded outline-none focus:ring-2 focus:ring-blue-500" />
                             </div>
-                            <div class="flex space-x-2">
-                                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded text-sm font-bold w-full hover:bg-green-600">Guardar</button>
-                                <button type="button" onClick={()=>setEditando(false)} class="bg-gray-300 text-gray-800 px-4 py-2 rounded text-sm font-bold hover:bg-gray-400">Cancelar</button>
+                            <div class="flex space-x-2 pt-2">
+                                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold w-full hover:bg-blue-700 transition-colors shadow-sm">Guardar Cotización</button>
+                                <button type="button" onClick={()=>setEditando(false)} class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-bold hover:bg-gray-300 transition-colors">Cancelar</button>
                             </div>
                         </form>
                     ) : (
                         cot && cot.estado !== 'anulada_por_error' ? (
-                            <div class="bg-blue-50 rounded p-4 border border-blue-100">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <span class={`text-xs font-bold px-2 py-1 rounded ${cot.tipo === 'Formal' ? 'bg-purple-200 text-purple-800' : 'bg-yellow-200 text-yellow-800'}`}>
-                                            {cot.tipo.toUpperCase()}
-                                        </span>
-                                        <p class="text-3xl font-bold mt-2">${parseFloat(cot.monto).toLocaleString('es-MX')}</p>
-                                        {cot.historialMontoRapido && (
-                                            <p class="text-xs text-gray-500 line-through">Ant. ${parseFloat(cot.historialMontoRapido).toLocaleString('es-MX')}</p>
-                                        )}
-                                    </div>
-                                    <div class="space-x-2">
-                                        <button onClick={() => { setTipoInput(cot.tipo); setMontoInput(cot.monto); setEditando(true); }} class="text-gray-400 hover:text-blue-600"><i class="fas fa-pencil-alt"></i></button>
-                                        <button onClick={anularCotizacion} class="text-gray-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
-                                    </div>
+                            <div class="bg-blue-50/50 rounded-lg p-5 border border-blue-100 flex justify-between items-start">
+                                <div>
+                                    <span class={`text-[10px] font-black uppercase px-2.5 py-1 rounded shadow-sm ${cot.tipo === 'Formal' ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-yellow-100 text-yellow-700 border border-yellow-200'}`}>
+                                        {cot.tipo}
+                                    </span>
+                                    <p class="text-4xl font-black mt-3 text-gray-800 tracking-tight">${parseFloat(cot.monto).toLocaleString('es-MX')}</p>
+                                    {cot.historialMontoRapido && (
+                                        <p class="text-xs text-gray-500 mt-1"><span class="line-through">Ant. ${parseFloat(cot.historialMontoRapido).toLocaleString('es-MX')}</span> <span class="bg-gray-200 px-1 rounded ml-1">Rápida</span></p>
+                                    )}
+                                </div>
+                                <div class="space-x-3 bg-white p-2 rounded-lg shadow-sm border border-gray-100">
+                                    <button onClick={() => { setTipoInput(cot.tipo); setMontoInput(cot.monto); setEditando(true); }} class="text-gray-400 hover:text-blue-600 transition-colors" title="Editar monto"><i class="fas fa-pencil-alt"></i></button>
+                                    <button onClick={anularCotizacion} class="text-gray-400 hover:text-red-600 transition-colors" title="Anular cotización"><i class="fas fa-trash"></i></button>
                                 </div>
                             </div>
                         ) : (
-                            <p class="text-sm text-gray-500 text-center p-4 border-2 border-dashed rounded">No hay cotización activa.</p>
+                            <div class="text-center p-6 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50 text-gray-400 flex flex-col items-center">
+                                <i class="fas fa-file-invoice-dollar text-3xl mb-2 text-gray-300"></i>
+                                <p class="text-sm font-medium">No hay cotización activa.</p>
+                            </div>
                         )
                     )}
                 </div>
@@ -468,14 +514,12 @@
                 const montoNuevo = parseFloat(montoPago);
                 if(isNaN(montoNuevo) || montoNuevo <= 0) return;
 
-                // 1. Guardar el registro del pago individual
                 await db.collection("leads").doc(leadId).collection("pagos").add({
                     monto: montoNuevo,
                     metodo: metodoPago,
                     fecha: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                // 2. Calcular saldos y actualizar etapa del lead
                 const totalPagadoPrevio = pagos.reduce((sum, p) => sum + p.monto, 0);
                 const nuevoTotalPagado = totalPagadoPrevio + montoNuevo;
                 const montoAcordado = lead.cotizacionActiva ? parseFloat(lead.cotizacionActiva.monto) : 0;
@@ -485,7 +529,7 @@
                     if (nuevoTotalPagado >= montoAcordado) {
                         nuevaEtapa = 'Entregado/Liquidado';
                     } else {
-                        nuevaEtapa = 'Pedido Confirmado'; // El primer anticipo confirma el pedido
+                        nuevaEtapa = 'Pedido Confirmado'; 
                     }
                 }
 
@@ -497,7 +541,6 @@
                 setMontoPago('');
             };
 
-            // Solo mostrar la caja de pagos si hay una cotización activa guardada
             if (!lead.cotizacionActiva || lead.cotizacionActiva.estado === 'anulada_por_error') {
                 return null; 
             }
@@ -507,47 +550,47 @@
             const saldo = Math.max(0, montoAcordado - totalPagado);
 
             return (
-                <div class="bg-white rounded-lg shadow p-6 border-t-4 border-indigo-500">
-                    <h3 class="text-xl font-bold text-gray-700 mb-4">Pagos y Saldos</h3>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-t-4 border-t-indigo-500 p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Pagos y Saldos</h3>
                     
-                    <div class="grid grid-cols-3 gap-2 mb-6 text-center">
-                        <div class="bg-gray-50 p-2 rounded border">
-                            <p class="text-[10px] uppercase font-bold text-gray-500">Total</p>
-                            <p class="font-bold text-gray-800">${montoAcordado.toLocaleString('es-MX')}</p>
+                    <div class="grid grid-cols-3 gap-3 mb-6 text-center">
+                        <div class="bg-gray-50 py-3 rounded-lg border border-gray-200 shadow-inner">
+                            <p class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Total</p>
+                            <p class="font-black text-gray-800 mt-1">${montoAcordado.toLocaleString('es-MX')}</p>
                         </div>
-                        <div class="bg-green-50 p-2 rounded border border-green-200">
-                            <p class="text-[10px] uppercase font-bold text-green-600">Pagado</p>
-                            <p class="font-bold text-green-700">${totalPagado.toLocaleString('es-MX')}</p>
+                        <div class="bg-green-50 py-3 rounded-lg border border-green-200 shadow-inner">
+                            <p class="text-[10px] uppercase font-bold text-green-600 tracking-wider">Pagado</p>
+                            <p class="font-black text-green-700 mt-1">${totalPagado.toLocaleString('es-MX')}</p>
                         </div>
-                        <div class="bg-red-50 p-2 rounded border border-red-200">
-                            <p class="text-[10px] uppercase font-bold text-red-600">Saldo</p>
-                            <p class="font-bold text-red-700">${saldo.toLocaleString('es-MX')}</p>
+                        <div class="bg-red-50 py-3 rounded-lg border border-red-200 shadow-inner">
+                            <p class="text-[10px] uppercase font-bold text-red-600 tracking-wider">Saldo</p>
+                            <p class="font-black text-red-700 mt-1">${saldo.toLocaleString('es-MX')}</p>
                         </div>
                     </div>
 
                     {saldo > 0 && (
                         <form onSubmit={registrarPago} class="mb-6 flex gap-2">
-                            <input type="number" step="0.01" placeholder="Monto $" value={montoPago} onChange={e=>setMontoPago(e.target.value)} required class="border rounded p-2 text-sm w-24 outline-none focus:ring-2 focus:ring-indigo-500" />
-                            <select value={metodoPago} onChange={e=>setMetodoPago(e.target.value)} class="border rounded p-2 text-sm flex-1 bg-white outline-none">
+                            <input type="number" step="0.01" placeholder="Monto $" value={montoPago} onChange={e=>setMontoPago(e.target.value)} required class="border border-gray-300 rounded-md p-2 text-sm w-24 outline-none focus:ring-2 focus:ring-indigo-500" />
+                            <select value={metodoPago} onChange={e=>setMetodoPago(e.target.value)} class="border border-gray-300 rounded-md p-2 text-sm flex-1 bg-white outline-none focus:ring-2 focus:ring-indigo-500">
                                 <option>Efectivo</option>
                                 <option>Transferencia</option>
                                 <option>Tarjeta</option>
                             </select>
-                            <button type="submit" class="bg-indigo-600 text-white px-3 rounded hover:bg-indigo-700 font-bold"><i class="fas fa-plus"></i> Pago</button>
+                            <button type="submit" class="bg-indigo-600 text-white px-4 rounded-md hover:bg-indigo-700 transition-colors font-bold shadow-sm"><i class="fas fa-plus mr-1"></i> Pago</button>
                         </form>
                     )}
 
-                    <div class="space-y-2 max-h-48 overflow-y-auto">
+                    <div class="space-y-3 max-h-48 overflow-y-auto pr-2">
                         {pagos.map(pago => (
-                            <div key={pago.id} class="flex justify-between items-center text-sm border-b pb-1">
+                            <div key={pago.id} class="flex justify-between items-center text-sm border border-gray-100 bg-gray-50 p-3 rounded-lg">
                                 <div>
-                                    <p class="font-bold text-gray-700">${parseFloat(pago.monto).toLocaleString('es-MX')}</p>
-                                    <p class="text-[10px] text-gray-400">{pago.fecha ? new Date(pago.fecha.toDate()).toLocaleDateString() : 'Hoy'} • {pago.metodo}</p>
+                                    <p class="font-black text-gray-700">${parseFloat(pago.monto).toLocaleString('es-MX')}</p>
+                                    <p class="text-[10px] text-gray-500 font-medium uppercase mt-0.5"><i class="far fa-calendar-alt mr-1"></i> {pago.fecha ? new Date(pago.fecha.toDate()).toLocaleDateString() : 'Hoy'} <span class="mx-1">•</span> <i class="fas fa-money-bill-wave mr-1"></i> {pago.metodo}</p>
                                 </div>
-                                <span class="text-green-500"><i class="fas fa-check-circle"></i></span>
+                                <span class="text-green-500 text-lg"><i class="fas fa-check-circle"></i></span>
                             </div>
                         ))}
-                        {pagos.length === 0 && <p class="text-xs text-gray-400 text-center">Sin pagos registrados</p>}
+                        {pagos.length === 0 && <p class="text-xs text-gray-400 text-center py-4 border-2 border-dashed border-gray-100 rounded">Sin pagos registrados</p>}
                     </div>
                 </div>
             );
@@ -596,78 +639,166 @@
             };
 
             return (
-                <div class="bg-white rounded-lg shadow p-6 border-t-4 border-green-500">
-                    <h3 class="text-xl font-bold text-gray-700 mb-4">Bitácora de Recontacto</h3>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 border-t-4 border-t-green-500 p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Bitácora de Recontacto</h3>
                     
                     <form onSubmit={agregarSeguimiento} class="mb-6 flex gap-2">
-                        <select value={respondio} onChange={e=>setRespondio(e.target.value)} class="border rounded p-2 text-sm bg-gray-50 outline-none">
+                        <select value={respondio} onChange={e=>setRespondio(e.target.value)} class="border border-gray-300 rounded-md p-2 text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-green-500">
                             <option>Pendiente</option>
                             <option>Sí respondió</option>
                             <option>No respondió</option>
                         </select>
-                        <input type="text" placeholder="Nota rápida..." value={texto} onChange={e=>setTexto(e.target.value)} required class="border rounded p-2 text-sm flex-1 outline-none focus:ring-2 focus:ring-green-500" />
-                        <button type="submit" class="bg-green-500 text-white px-3 rounded hover:bg-green-600"><i class="fas fa-plus"></i></button>
+                        <input type="text" placeholder="Nota rápida (ej. Llamé y no contestó)..." value={texto} onChange={e=>setTexto(e.target.value)} required class="border border-gray-300 rounded-md p-2 text-sm flex-1 outline-none focus:ring-2 focus:ring-green-500" />
+                        <button type="submit" class="bg-green-500 text-white px-4 rounded-md hover:bg-green-600 transition-colors shadow-sm"><i class="fas fa-paper-plane"></i></button>
                     </form>
 
-                    <div class="space-y-3 max-h-64 overflow-y-auto">
-                        {seguimientos.map(seg => (
-                            <div key={seg.id} class="border-l-2 border-gray-200 pl-3 py-1 group relative">
+                    <div class="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                        {seguimientos.map((seg, index) => (
+                            <div key={seg.id} class="relative pl-4 border-l-2 border-gray-200 group">
+                                {/* Decoración de línea de tiempo */}
+                                <div class="absolute w-3 h-3 bg-gray-200 rounded-full -left-[7px] top-1.5 border-2 border-white group-hover:bg-green-400 transition-colors"></div>
+                                
                                 {editandoId === seg.id ? (
-                                    <div class="flex gap-2 mb-2">
-                                        <select value={respondioEdit} onChange={e=>setRespondioEdit(e.target.value)} class="border rounded p-1 text-xs bg-white">
-                                            <option>Pendiente</option>
-                                            <option>Sí respondió</option>
-                                            <option>No respondió</option>
-                                        </select>
-                                        <input type="text" value={textoEdit} onChange={e=>setTextoEdit(e.target.value)} class="border rounded p-1 text-xs flex-1" />
-                                        <button onClick={() => guardarEdicion(seg.id)} class="text-green-600 hover:text-green-800"><i class="fas fa-check"></i></button>
-                                        <button onClick={() => setEditandoId(null)} class="text-gray-400 hover:text-red-600"><i class="fas fa-times"></i></button>
+                                    <div class="flex flex-col gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-inner">
+                                        <div class="flex gap-2">
+                                            <select value={respondioEdit} onChange={e=>setRespondioEdit(e.target.value)} class="border border-gray-300 rounded p-1 text-xs bg-white outline-none">
+                                                <option>Pendiente</option>
+                                                <option>Sí respondió</option>
+                                                <option>No respondió</option>
+                                            </select>
+                                            <button onClick={() => guardarEdicion(seg.id)} class="text-white bg-green-500 px-2 rounded hover:bg-green-600 transition-colors text-xs font-bold shadow-sm"><i class="fas fa-check mr-1"></i> Guardar</button>
+                                            <button onClick={() => setEditandoId(null)} class="text-gray-500 bg-gray-200 px-2 rounded hover:bg-gray-300 transition-colors text-xs font-bold"><i class="fas fa-times"></i></button>
+                                        </div>
+                                        <textarea value={textoEdit} onChange={e=>setTextoEdit(e.target.value)} class="border border-gray-300 rounded p-2 text-sm w-full outline-none focus:ring-2 focus:ring-green-500" rows="2"></textarea>
                                     </div>
                                 ) : (
-                                    <>
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-xs font-bold text-gray-500">Intento #{seg.intento} • {seg.fecha ? new Date(seg.fecha.toDate()).toLocaleDateString() : 'Hoy'}</span>
+                                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                                        <div class="flex justify-between items-start mb-2">
+                                            <div>
+                                                <span class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Intento #{seguimientos.length - index}</span>
+                                                <span class="text-[10px] text-gray-500 ml-2"><i class="far fa-clock"></i> {seg.fecha ? new Date(seg.fecha.toDate()).toLocaleString('es-MX', {dateStyle: 'short', timeStyle: 'short'}) : 'Ahora'}</span>
+                                            </div>
                                             <div class="flex items-center gap-2">
-                                                <button onClick={() => iniciarEdicion(seg)} class="text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => iniciarEdicion(seg)} class="text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white px-2 py-0.5 rounded shadow-sm border border-gray-200">
                                                     <i class="fas fa-pencil-alt text-xs"></i>
                                                 </button>
-                                                <span class={`text-[10px] px-2 py-0.5 rounded-full font-bold ${seg.respondio === 'Sí respondió' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{seg.respondio}</span>
+                                                <span class={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase shadow-sm ${seg.respondio === 'Sí respondió' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-white text-gray-600 border border-gray-200'}`}>{seg.respondio}</span>
                                             </div>
                                         </div>
-                                        <p class="text-sm text-gray-700 mt-1">{seg.nota}</p>
-                                    </>
+                                        <p class="text-sm text-gray-800">{seg.nota}</p>
+                                    </div>
                                 )}
                             </div>
                         ))}
+                        {seguimientos.length === 0 && (
+                            <div class="text-center py-8">
+                                <i class="far fa-comments text-4xl text-gray-200 mb-2"></i>
+                                <p class="text-sm text-gray-400 font-medium">Aún no hay seguimientos registrados.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
         }
 
-        // 8. VISTA: TABLERO 
+        // 8. VISTA: TABLERO (Ahora con cálculos reales basados en Firebase)
         function VistaReportes() {
+            const [metricas, setMetricas] = useState({ activos: 0, formales: 0, cobrado: 0 });
+            const [cargando, setCargando] = useState(true);
+
+            useEffect(() => {
+                // Escuchamos la colección de leads para calcular en tiempo real
+                const unsubscribe = db.collection("leads").onSnapshot(snapshot => {
+                    let totalActivos = 0;
+                    let totalFormales = 0;
+                    let totalCobrado = 0;
+
+                    snapshot.docs.forEach(doc => {
+                        const data = doc.data();
+                        
+                        // 1. Leads Activos: Todos menos los liquidados o anulados/perdidos
+                        if (data.etapa !== 'Entregado/Liquidado' && data.etapa !== 'Perdido') {
+                            totalActivos++;
+                        }
+
+                        // 2. Cotizaciones Formales Activas
+                        if (data.cotizacionActiva && 
+                            data.cotizacionActiva.tipo === 'Formal' && 
+                            data.cotizacionActiva.estado !== 'anulada_por_error' &&
+                            data.etapa !== 'Entregado/Liquidado') {
+                            totalFormales++;
+                        }
+
+                        // 3. Dinero Total Cobrado Histórico (Sumatoria de los pagos registrados)
+                        if (data.totalPagado && typeof data.totalPagado === 'number') {
+                            totalCobrado += data.totalPagado;
+                        }
+                    });
+
+                    setMetricas({ 
+                        activos: totalActivos, 
+                        formales: totalFormales, 
+                        cobrado: totalCobrado 
+                    });
+                    setCargando(false);
+                });
+
+                return () => unsubscribe();
+            }, []);
+
             return (
                 <div class="space-y-6">
-                    <h2 class="text-2xl font-bold text-gray-700">Tablero de Ventas</h2>
+                    <h2 class="text-2xl font-bold text-gray-700 mb-6">Tablero de Ventas en Tiempo Real</h2>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="bg-white p-6 rounded shadow border-l-4 border-blue-500">
-                            <p class="text-sm text-gray-500 font-bold uppercase">Leads Activos</p>
-                            <p class="text-3xl font-black mt-2 text-blue-600">Calculando...</p>
+                    {cargando ? (
+                        <div class="text-center p-12 text-gray-500">
+                            <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-blue-500"></i>
+                            <p>Procesando datos de Firestore...</p>
                         </div>
-                        <div class="bg-white p-6 rounded shadow border-l-4 border-purple-500">
-                            <p class="text-sm text-gray-500 font-bold uppercase">Cotizaciones Formales</p>
-                            <p class="text-3xl font-black mt-2 text-purple-600">Calculando...</p>
+                    ) : (
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Tarjeta Leads Activos */}
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500 relative overflow-hidden group hover:shadow-md transition-shadow">
+                                <div class="absolute right-[-20px] top-[10px] opacity-5 text-blue-500 group-hover:scale-110 transition-transform">
+                                    <i class="fas fa-users text-9xl"></i>
+                                </div>
+                                <div class="relative z-10">
+                                    <p class="text-xs text-gray-500 font-black uppercase tracking-wider">Leads en Proceso</p>
+                                    <p class="text-5xl font-black mt-2 text-gray-800">{metricas.activos}</p>
+                                    <p class="text-xs text-blue-500 font-bold mt-2 mt-4 bg-blue-50 inline-block px-2 py-1 rounded">Aún no finalizados</p>
+                                </div>
+                            </div>
+
+                            {/* Tarjeta Cotizaciones Formales */}
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-purple-500 relative overflow-hidden group hover:shadow-md transition-shadow">
+                                <div class="absolute right-[-20px] top-[10px] opacity-5 text-purple-500 group-hover:scale-110 transition-transform">
+                                    <i class="fas fa-file-invoice text-9xl"></i>
+                                </div>
+                                <div class="relative z-10">
+                                    <p class="text-xs text-gray-500 font-black uppercase tracking-wider">Cotizaciones Formales</p>
+                                    <p class="text-5xl font-black mt-2 text-gray-800">{metricas.formales}</p>
+                                    <p class="text-xs text-purple-500 font-bold mt-2 mt-4 bg-purple-50 inline-block px-2 py-1 rounded">Esperando cierre</p>
+                                </div>
+                            </div>
+
+                            {/* Tarjeta Dinero Cobrado */}
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-green-500 relative overflow-hidden group hover:shadow-md transition-shadow">
+                                <div class="absolute right-[-20px] top-[10px] opacity-5 text-green-500 group-hover:scale-110 transition-transform">
+                                    <i class="fas fa-hand-holding-usd text-9xl"></i>
+                                </div>
+                                <div class="relative z-10">
+                                    <p class="text-xs text-gray-500 font-black uppercase tracking-wider">Ingreso Total Histórico</p>
+                                    <p class="text-4xl font-black mt-2 text-green-600">${metricas.cobrado.toLocaleString('es-MX')}</p>
+                                    <p class="text-xs text-green-600 font-bold mt-2 mt-4 bg-green-50 inline-block px-2 py-1 rounded">Basado en pagos registrados</p>
+                                </div>
+                            </div>
                         </div>
-                        <div class="bg-white p-6 rounded shadow border-l-4 border-green-500">
-                            <p class="text-sm text-gray-500 font-bold uppercase">Dinero Cobrado</p>
-                            <p class="text-3xl font-black mt-2 text-green-600">Calculando...</p>
-                        </div>
-                    </div>
+                    )}
                     
-                    <div class="bg-white p-8 rounded shadow text-center text-gray-500">
-                        <i class="fas fa-chart-line text-4xl mb-3 text-gray-300"></i>
-                        <p>Los reportes se generan automáticamente a partir de los registros ingresados en la base de datos Firestore de Tinta Fuerte.</p>
+                    <div class="bg-blue-50/50 p-8 rounded-xl border border-blue-100 text-center text-blue-800 shadow-sm mt-8">
+                        <i class="fas fa-cloud-check text-4xl mb-3 text-blue-300"></i>
+                        <h3 class="font-bold text-lg mb-1">Cálculos Automatizados</h3>
+                        <p class="text-sm opacity-80 max-w-lg mx-auto">Estas métricas se calculan en vivo leyendo cada movimiento, pago y cambio de etapa que guardas en la base de datos de Tinta Fuerte.</p>
                     </div>
                 </div>
             );
