@@ -26,14 +26,14 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // 1. CONFIGURACIÓN DE FIREBASE (Reemplaza con tus datos reales)
+        // 1. CONFIGURACIÓN DE FIREBASE
         const firebaseConfig = {
-            apiKey: "TU_API_KEY",
-            authDomain: "TU_PROYECTO.firebaseapp.com",
-            projectId: "TU_PROYECTO",
-            storageBucket: "TU_PROYECTO.appspot.com",
-            messagingSenderId: "TU_SENDER_ID",
-            appId: "TU_APP_ID"
+            apiKey: "AIzaSyBsHBenYwHEx9i_Gg5ZocCQhI3eidHJFJo",
+            authDomain: "crmtinta.firebaseapp.com",
+            projectId: "crmtinta",
+            storageBucket: "crmtinta.firebasestorage.app",
+            messagingSenderId: "659329245402",
+            appId: "1:659329245402:web:191a8dfc41235415f845e3"
         };
 
         if (!firebase.apps.length) {
@@ -114,7 +114,7 @@
                             <tbody>
                                 {leads.map(lead => (
                                     <tr key={lead.id} onClick={() => alSeleccionarLead(lead)} class="hover:bg-gray-50 cursor-pointer border-b last:border-0 transition">
-                                        <td class="p-4">{new Date(lead.fechaCreacion?.toDate()).toLocaleDateString()}</td>
+                                        <td class="p-4">{lead.fechaCreacion ? new Date(lead.fechaCreacion.toDate()).toLocaleDateString() : ''}</td>
                                         <td class="p-4 font-semibold">{lead.nombre} <br/><span class="text-xs text-gray-400 font-normal">{lead.telefono}</span></td>
                                         <td class="p-4 text-sm">{lead.canal}</td>
                                         <td class="p-4 text-sm">{lead.servicio}</td>
@@ -135,7 +135,7 @@
             );
         }
 
-        // 4. MODAL: REGISTRO DE LEAD (En menos de 1 minuto)
+        // 4. MODAL: REGISTRO DE LEAD
         function ModalRegistroLead({ cerrar }) {
             const guardarLead = async (e) => {
                 e.preventDefault();
@@ -194,8 +194,8 @@
                             <div>
                                 <label class="block text-xs font-bold text-gray-600 mb-1">Prenda / Detalle</label>
                                 <select name="prenda" class="w-full border rounded p-2 bg-white outline-none">
-                                    <option value="Playera Oversize (Ej. Shaka/Wusstek)">Playera Oversize</option>
-                                    <option value="Gorra Snapback/Trucker (Ej. Yupoong)">Gorra</option>
+                                    <option value="Playera Oversize">Playera Oversize</option>
+                                    <option value="Gorra">Gorra</option>
                                     <option value="Hoodie">Hoodie / Sudadera</option>
                                     <option value="Solo Impresión (Trae Prenda)">Solo Impresión (Cliente trae prenda)</option>
                                 </select>
@@ -209,7 +209,7 @@
             );
         }
 
-        // 5. VISTA: DETALLE DEL LEAD (Cotizaciones, Seguimientos, Pedidos)
+        // 5. VISTA: DETALLE DEL LEAD 
         function VistaDetalleLead({ leadId, volver }) {
             const [lead, setLead] = useState(null);
             
@@ -240,17 +240,14 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Columna Izquierda: Seguimientos */}
                         <SeccionSeguimientos leadId={leadId} />
-
-                        {/* Columna Derecha: Cotización Activa */}
                         <SeccionCotizacion lead={lead} />
                     </div>
                 </div>
             );
         }
 
-        // 6. COMPONENTE: SECCIÓN DE COTIZACIÓN (Maneja la lógica rápida -> formal y soft delete)
+        // 6. COMPONENTE: SECCIÓN DE COTIZACIÓN 
         function SeccionCotizacion({ lead }) {
             const [editando, setEditando] = useState(false);
             const [montoInput, setMontoInput] = useState('');
@@ -266,7 +263,7 @@
                 if (esNueva) {
                     dataActualizada = {
                         cotizacionActiva: {
-                            tipo: tipoInput, // 'Rápida' o 'Formal'
+                            tipo: tipoInput,
                             monto: nuevoMonto,
                             ruta: tipoInput === 'Formal' ? 'Directa' : 'Normal',
                             fechaRapida: tipoInput === 'Rápida' ? new Date().toISOString() : null,
@@ -276,7 +273,6 @@
                         etapa: tipoInput === 'Formal' ? 'Cotización Formal' : 'Cotización Rápida'
                     };
                 } else {
-                    // Actualización o paso a formal
                     const c = lead.cotizacionActiva;
                     const escalaAFormal = c.tipo === 'Rápida' && tipoInput === 'Formal';
                     
@@ -298,7 +294,7 @@
             };
 
             const anularCotizacion = async () => {
-                if(confirm("¿Seguro que deseas anular esta cotización? (Soft delete)")){
+                if(confirm("¿Seguro que deseas anular esta cotización?")){
                     await db.collection("leads").doc(lead.id).update({
                         'cotizacionActiva.estado': 'anulada_por_error',
                         etapa: 'Lead Nuevo'
@@ -369,7 +365,7 @@
             );
         }
 
-        // 7. COMPONENTE: SEGUIMIENTOS (Edición y creación rápida)
+        // 7. COMPONENTE: SEGUIMIENTOS 
         function SeccionSeguimientos({ leadId }) {
             const [seguimientos, setSeguimientos] = useState([]);
             const [texto, setTexto] = useState('');
@@ -423,10 +419,8 @@
             );
         }
 
-        // 8. VISTA: TABLERO / REPORTES SIMPLIFICADO
+        // 8. VISTA: TABLERO 
         function VistaReportes() {
-            // Este componente calcularía métricas basadas en los documentos de Firebase.
-            // Para la versión HTML de copia directa, mostramos una estructura visual limpia de lo que contendrá.
             return (
                 <div class="space-y-6">
                     <h2 class="text-2xl font-bold text-gray-700">Tablero de Ventas</h2>
@@ -454,7 +448,7 @@
             );
         }
 
-        // Renderizar la App en el DOM
+        // Renderizar la App
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
