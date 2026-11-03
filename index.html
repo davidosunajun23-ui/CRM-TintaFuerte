@@ -243,6 +243,16 @@
                 setEditandoInfo(false);
             };
 
+            const eliminarLead = async () => {
+                // Aquí lanzamos la advertencia nativa del navegador
+                const confirmacion = window.confirm("⚠️ ADVERTENCIA: ¿Estás seguro de que deseas eliminar este lead y toda su información?\n\nEsta acción no se puede deshacer.");
+                
+                if (confirmacion) {
+                    await db.collection("leads").doc(leadId).delete();
+                    volver(); // Regresamos a la lista principal después de borrar
+                }
+            };
+
             if (!lead) return <div class="p-8 text-center">Cargando...</div>;
 
             return (
@@ -287,6 +297,9 @@
                                             <h2 class="text-3xl font-bold text-gray-800">{lead.nombre}</h2>
                                             <button onClick={() => setEditandoInfo(true)} class="text-xs bg-gray-200 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-300 transition-colors font-bold flex items-center gap-2" title="Editar datos del cliente">
                                                 <i class="fas fa-pencil-alt"></i> Editar
+                                            </button>
+                                            <button onClick={eliminarLead} class="text-xs bg-red-100 text-red-600 px-3 py-1.5 rounded hover:bg-red-200 transition-colors font-bold flex items-center gap-2" title="Eliminar lead permanentemente">
+                                                <i class="fas fa-trash-alt"></i> Eliminar
                                             </button>
                                         </div>
                                         <p class="text-gray-500"><i class="fab fa-whatsapp mr-1 text-green-500"></i> {lead.telefono} | Llegó por: {lead.canal}</p>
